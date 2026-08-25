@@ -1,0 +1,93 @@
+name: automerge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize, unlabeled]
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: automerge-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto squash-merge trusted PRs into main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          prs=$(gh pr list --base main --state open --json number,title,author,isDraft,isCrossRepository,labels --limit 100)
+
+          while IFS= read -r pr; do
+            [ -z "$pr" ] && continue
+
+            num=$(jq -r '.number' <<< "$pr")
+            title=$(jq -r '.title' <<< "$pr")
+            author=$(jq -r '.author.login' <<< "$pr")
+            is_draft=$(jq -r '.isDraft' <<< "$pr")
+            is_fork=$(jq -r '.isCrossRepository' <<< "$pr")
+
+            echo "Evaluating PR #$num by $author: $title"
+
+            if [ "$is_fork" = "true" ]; then
+              echo "Skip #$num: fork / isCrossRepository"
+              continue
+            fi
+
+            if [[ "$author" != "ripuljain-oss" && "$author" != "cursoragent" && "$author" != "cursor[bot]" ]]; then
+              echo "Skip #$num: author $author is not trusted"
+              continue
+            fi
+
+            if echo "$title" | grep -qi '\[no-merge\]'; then
+              echo "Skip #$num: title contains [no-merge]"
+              continue
+            fi
+
+            if jq -e '.labels[]? | select(.name == "do-not-merge")' <<< "$pr" >/dev/null; then
+              echo "Skip #$num: label do-not-merge"
+              continue
+            fi
+
+            if [ "$is_draft" = "true" ]; then
+              echo "Marking #$num ready for review"
+              gh pr ready "$num"
+            fi
+
+            set +e
+            checks_output=$(gh pr checks "$num" 2>&1)
+            checks_status=$?
+            set -e
+            printf '%s\n' "$checks_output"
+
+            # gh pr checks exits 1 both for failed checks and for "no checks reported".
+            if echo "$checks_output" | grep -qi 'no checks reported'; then
+              echo "No checks reported for #$num; treating as green"
+              gh pr merge "$num" --squash --delete-branch || echo "Could not merge #$num"
+              continue
+            fi
+
+            if [ "$checks_status" -eq 1 ]; then
+              echo "Skip #$num: checks failed"
+              continue
+            fi
+
+            if [ "$checks_status" -eq 8 ]; then
+              echo "Checks pending for #$num; enabling auto squash-merge"
+              gh pr merge "$num" --squash --auto --delete-branch || echo "Could not enable auto-merge for #$num"
+            else
+              echo "Checks green or none for #$num; squash-merging"
+              gh pr merge "$num" --squash --delete-branch || echo "Could not merge #$num"
+            fi
+          done < <(jq -c '.[]' <<< "$prs")
