@@ -49,7 +49,7 @@ jobs:
               continue
             fi
 
-            if [[ "${title,,}" == *"[no-merge]"* ]]; then
+            if echo "$title" | grep -qi '\[no-merge\]'; then
               echo "Skip #$num: title contains [no-merge]"
               continue
             fi
@@ -65,9 +65,17 @@ jobs:
             fi
 
             set +e
-            gh pr checks "$num"
+            checks_output=$(gh pr checks "$num" 2>&1)
             checks_status=$?
             set -e
+            printf '%s\n' "$checks_output"
+
+            # gh pr checks exits 1 both for failed checks and for "no checks reported".
+            if echo "$checks_output" | grep -qi 'no checks reported'; then
+              echo "No checks reported for #$num; treating as green"
+              gh pr merge "$num" --squash --delete-branch || echo "Could not merge #$num"
+              continue
+            fi
 
             if [ "$checks_status" -eq 1 ]; then
               echo "Skip #$num: checks failed"
