@@ -1,0 +1,15 @@
+# Edgeprint marketing site — Workers Static Assets + custom domains.
+# Custom domains auto-create proxied DNS on the edgeprint.app zone.
+name = "edgeprint-site"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+routes = [
+  { pattern = "edgeprint.app", custom_domain = true },
+  { pattern = "www.edgeprint.app", custom_domain = true },
+]
+
+[assets]
+directory = "./public"
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"

@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Edgeprint — Your companion for shooting film</title>
+<meta name="description" content="Film doesn’t write EXIF. Edgeprint meters and logs in the field, then stamps camera, lens, and exposure onto your lab scans." />
+<style>
+  /* Safelight palette — locked to the app (theme.ts) */
+  :root {
+    --bg: #0b0b0d;
+    --panel: #151518;
+    --panel2: #1d1d21;
+    --line: #2a2a30;
+    --ink: #f4f2ec;
+    --muted: #8b8b93;
+    --faint: #55555c;
+    --amber: #ff8a1e;
+    --amber-dim: #c96a12;
+    --kodak: #ffb400;
+    --green: #4cd07a;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+
+  .wrap {
+    width: min(1080px, calc(100% - 40px));
+    margin: 0 auto;
+  }
+
+  /* ---------- NAV ---------- */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: #0b0b0df0;
+    border-bottom: 1px solid #1c1c20;
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--ink);
+  }
+  .wordmark .mark { color: var(--kodak); margin-right: 4px; }
+  .nav-cta {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a0f04;
+    background: var(--amber);
+    padding: 9px 14px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .btn.btn-amber {
+    cursor: default;
+  }
+  .btn.btn-amber:hover { transform: none; }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: 72px 0 64px;
+    text-align: center;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: var(--kodak);
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(34px, 6vw, 52px);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.12;
+    max-width: 16ch;
+    margin: 0 auto 20px;
+  }
+  .hero .sub {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--muted);
+    max-width: 28em;
+    margin: 0 auto 32px;
+    line-height: 1.55;
+  }
+  .hero .sub em {
+    font-style: normal;
+    color: var(--ink);
+  }
+
+  /* ---------- PROBLEM ---------- */
+  .problem {
+    padding: 0 0 56px;
+  }
+  .problem-card {
+    max-width: 640px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 28px 26px;
+    text-align: left;
+  }
+  .problem-card .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--kodak);
+    margin-bottom: 12px;
+  }
+  .problem-card h2 {
+    font-size: clamp(20px, 3vw, 24px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    margin-bottom: 12px;
+  }
+  .problem-card p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .problem-card p:last-child { margin-bottom: 0; }
+  .problem-card p strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 14px;
+    padding: 15px 22px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    max-width: 100%;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-amber {
+    background: linear-gradient(180deg, #ffa04a, var(--amber-dim));
+    color: #1a0f04;
+    box-shadow: 0 10px 32px #ff8a1e33;
+  }
+  .btn-amber:hover { background: linear-gradient(180deg, #ffb05a, var(--amber)); }
+  .btn-ghost {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { border-color: #3a3a42; background: var(--panel2); }
+  .trust {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    letter-spacing: 0.4px;
+  }
+  .trust span { color: var(--muted); }
+  .trust .dot { margin: 0 8px; color: #2a2a30; }
+
+  /* Hero phones */
+  .hero-phones {
+    margin-top: 56px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .device {
+    width: 220px;
+    height: 460px;
+    background: #050506;
+    border-radius: 36px;
+    border: 1px solid #3a3a44;
+    box-shadow:
+      0 40px 80px #000a,
+      inset 0 0 0 1px #ffffff08;
+    overflow: hidden;
+    position: relative;
+    text-align: left;
+  }
+  .device::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 36px;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 #ffffff10;
+  }
+  .device .island {
+    width: 88px;
+    height: 24px;
+    background: #000;
+    border-radius: 14px;
+    margin: 10px auto 0;
+  }
+  .device .screen {
+    padding: 12px 14px 16px;
+    height: calc(100% - 34px);
+    display: flex;
+    flex-direction: column;
+  }
+  .device.tilt-l,
+  .device.tilt-r { transform: none; }
+
+  /* Mini logger UI */
+  .ml-back { color: var(--amber); font-size: 11px; font-weight: 600; }
+  .ml-roll {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    color: var(--kodak);
+    margin-top: 6px;
+  }
+  .ml-sub {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--faint);
+    margin-top: 2px;
+  }
+  .ml-counter {
+    text-align: center;
+    margin: 14px 0 10px;
+  }
+  .ml-win {
+    display: inline-flex;
+    align-items: baseline;
+    background: #040404;
+    border: 1px solid #2e2e34;
+    border-radius: 8px;
+    padding: 6px 16px;
+  }
+  .ml-cur {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--kodak);
+    letter-spacing: -1px;
+  }
+  .ml-of {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #5a5a62;
+    font-weight: 600;
+  }
+  .ml-lbl {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: 2px;
+    color: var(--faint);
+    margin-top: 6px;
+  }
+  .ml-dials {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 5px;
+  }
+  .ml-dial {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 2px;
+    text-align: center;
+  }
+  .ml-dial .k {
+    font-family: var(--mono);
+    font-size: 6.5px;
+    letter-spacing: 0.8px;
+    color: var(--faint);
+  }
+  .ml-dial .v {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .ml-lens {
+    margin-top: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 9px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ml-lens .k {
+    font-family: var(--mono);
+    font-size: 6.5px;
+    letter-spacing: 0.8px;
+    color: var(--faint);
+  }
+  .ml-lens .v {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  .ml-lens .ch { color: var(--amber); font-size: 9px; }
+  .ml-log {
+    margin-top: auto;
+    background: linear-gradient(180deg, #ffa04a, var(--amber-dim));
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .ml-log .t {
+    font-size: 11px;
+    font-weight: 800;
+    color: #160c02;
+    letter-spacing: 0.3px;
+  }
+  .ml-log .s {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: #160c02a0;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+  .ml-meter {
+    position: absolute;
+    right: 14px;
+    bottom: 78px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #ffa04a, var(--amber-dim));
+    box-shadow: 0 6px 16px #ff8a1e44;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ml-meter svg { width: 16px; height: 16px; }
+
+  /* Mini scans UI */
+  .ms-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .ms-sub {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    color: var(--muted);
+    margin: 2px 0 12px;
+  }
+  .ms-sec {
+    font-family: var(--mono);
+    font-size: 7.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--faint);
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0 4px;
+  }
+  .ms-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid #18181c;
+  }
+  .ms-memo {
+    width: 26px;
+    height: 36px;
+    border-radius: 4px;
+    background: linear-gradient(160deg, #e8b86a, #c47a28);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    color: #140c02;
+    font-size: 6px;
+    font-weight: 700;
+  }
+  .ms-memo.hp5 {
+    background: linear-gradient(160deg, #9a9aa0, #4a4a50);
+    color: #f4f2ec;
+  }
+  .ms-memo .i { font-size: 9px; margin-top: 1px; }
+  .ms-body { flex: 1; min-width: 0; }
+  .ms-stock { font-size: 11px; font-weight: 600; }
+  .ms-meta {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .ms-trail {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--faint);
+  }
+  .ms-trail.lab { color: var(--kodak); font-weight: 600; letter-spacing: 0.4px; }
+  .ms-exif {
+    margin-top: auto;
+    background: #4cd07a14;
+    border: 1px solid #4cd07a33;
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .ms-exif .h {
+    font-family: var(--mono);
+    font-size: 7.5px;
+    letter-spacing: 1px;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .ms-exif .line {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    padding: 2px 0;
+    color: var(--muted);
+  }
+  .ms-exif .line b { color: var(--ink); font-weight: 600; }
+
+  .device-cap {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--faint);
+    text-align: center;
+  }
+  .phone-col { display: flex; flex-direction: column; align-items: center; }
+
+  /* Mini light meter UI */
+  .mm-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .mm-close {
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .mm-body {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+  }
+  .mm-view {
+    flex: 1;
+    border-radius: 12px;
+    background:
+      radial-gradient(ellipse at 40% 35%, #5a6a78 0%, transparent 45%),
+      linear-gradient(165deg, #2a3540 0%, #1a2228 40%, #0e1216 100%);
+    border: 1px solid #2a3038;
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mm-view::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 30%, #0006 100%);
+    pointer-events: none;
+  }
+  .mm-reticle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 1.5px solid var(--amber);
+    box-shadow: 0 0 0 4px #ff8a1e22, 0 0 20px #ff8a1e33;
+    position: relative;
+    z-index: 1;
+  }
+  .mm-reticle::before,
+  .mm-reticle::after {
+    content: "";
+    position: absolute;
+    background: var(--amber);
+    left: 50%;
+    top: 50%;
+  }
+  .mm-reticle::before {
+    width: 1px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+  }
+  .mm-reticle::after {
+    width: 14px;
+    height: 1px;
+    transform: translate(-50%, -50%);
+  }
+  .mm-reticle .core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber);
+    transform: translate(-50%, -50%);
+  }
+  .mm-ev-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 2;
+    font-family: var(--mono);
+    font-size: 8px;
+  }
+  .mm-ev-badge .ev {
+    color: var(--ink);
+    background: #000a;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .mm-ev-badge .ok {
+    color: var(--green);
+    background: #000a;
+    padding: 3px 6px;
+    border-radius: 4px;
+  }
+  .mm-film {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--kodak);
+    margin: 8px 0 6px;
+    letter-spacing: 0.3px;
+  }
+  .mm-dials {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .mm-dial {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 2px;
+    text-align: center;
+  }
+  .mm-dial.hold {
+    border-color: var(--amber);
+    background: #ff8a1e14;
+  }
+  .mm-dial .k {
+    font-family: var(--mono);
+    font-size: 6px;
+    letter-spacing: 0.6px;
+    color: var(--faint);
+  }
+  .mm-dial .v {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .mm-dial .badge {
+    font-family: var(--mono);
+    font-size: 6px;
+    color: var(--amber);
+    margin-top: 2px;
+  }
+  .mm-log {
+    background: linear-gradient(180deg, #ffa04a, var(--amber-dim));
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .mm-log .t {
+    font-size: 10px;
+    font-weight: 800;
+    color: #160c02;
+  }
+  .mm-log .s {
+    font-family: var(--mono);
+    font-size: 6.5px;
+    color: #160c02a0;
+    letter-spacing: 0.6px;
+    margin-top: 2px;
+  }
+
+  /* ---------- SECTION COMMON ---------- */
+  .section {
+    padding: 72px 0;
+    border-top: 1px solid #1c1c20;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2.2px;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 28px;
+  }
+
+  /* ---------- TWO BEATS ---------- */
+  .beats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 800px) {
+    .beats { grid-template-columns: 1fr; }
+  }
+  .beat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+  }
+  .beat-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    color: var(--amber);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .beat h2 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    margin-bottom: 10px;
+  }
+  .beat > p {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.55;
+    margin-bottom: 18px;
+  }
+  .beat ul {
+    list-style: none;
+    margin-bottom: 22px;
+  }
+  .beat li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 9px 0;
+    border-top: 1px solid #1c1c20;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .beat li:last-child { border-bottom: 1px solid #1c1c20; }
+  .beat li .tick {
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.4;
+    flex-shrink: 0;
+  }
+  .beat-visual {
+    margin-top: auto;
+    background: #0a0a0c;
+    border: 1px solid #222228;
+    border-radius: 14px;
+    padding: 16px;
+    min-height: 120px;
+  }
+
+  /* beat 1 visual — meter reticle */
+  .vis-meter {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .reticle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid var(--amber);
+    box-shadow: 0 0 0 6px #ff8a1e18, inset 0 0 20px #ff8a1e22;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .reticle::before, .reticle::after {
+    content: "";
+    position: absolute;
+    background: var(--amber);
+  }
+  .reticle::before { width: 1px; height: 18px; }
+  .reticle::after { width: 18px; height: 1px; }
+  .reticle .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .vis-meter .readout .ev {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .vis-meter .readout .hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .vis-meter .readout .solved {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--kodak);
+  }
+
+  /* beat 2 visual — EXIF rows */
+  .vis-exif .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .vis-exif .row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 5px 0;
+    border-bottom: 1px solid #1a1a1e;
+    color: var(--muted);
+  }
+  .vis-exif .row:last-child { border-bottom: none; }
+  .vis-exif .row b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- SECONDARY ---------- */
+  .secondary h3 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 16px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chip {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- TRUST ---------- */
+  .proof {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 700px) {
+    .proof { grid-template-columns: 1fr; }
+  }
+  .proof-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 20px;
+    text-align: center;
+  }
+  .proof-card .icon {
+    font-family: var(--mono);
+    color: var(--kodak);
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .proof-card strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .proof-card span {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ---------- BOTTOM CTA ---------- */
+  .bottom {
+    text-align: center;
+    padding: 80px 0 72px;
+    border-top: 1px solid #1c1c20;
+    position: relative;
+    overflow: hidden;
+  }
+  .bottom::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: 480px;
+    height: 280px;
+    background: radial-gradient(ellipse, #ff8a1e18 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .bottom h2 {
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 700;
+    letter-spacing: 0;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .bottom p {
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .bottom .cta-row { position: relative; }
+
+  /* ---------- FOOTER ---------- */
+  .footer {
+    border-top: 1px solid #1c1c20;
+    padding: 28px 0 40px;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .footer .wordmark { font-size: 11px; }
+  .footer-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .footer-links {
+    display: flex;
+    gap: 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .footer-links a:hover { color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .wrap {
+      width: min(calc(100% - 32px), 420px);
+    }
+    .nav-inner {
+      height: 58px;
+      gap: 12px;
+    }
+    .wordmark {
+      font-size: 12px;
+      letter-spacing: 1.6px;
+    }
+    .nav-cta {
+      display: none;
+    }
+    .hero {
+      padding: 58px 0 48px;
+    }
+    .eyebrow {
+      margin-bottom: 14px;
+    }
+    .hero h1 {
+      font-size: clamp(30px, 8vw, 36px);
+      max-width: 10ch;
+      overflow-wrap: normal;
+    }
+    .hero .sub {
+      font-size: 16px;
+      max-width: 21em;
+      margin-bottom: 28px;
+    }
+    .cta-row {
+      flex-direction: column;
+      align-items: stretch;
+      width: min(100%, 250px);
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .btn {
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .trust {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 10px;
+      line-height: 1.8;
+    }
+    .trust .dot {
+      display: none;
+    }
+    .hero-phones {
+      margin-top: 44px;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+    .device {
+      width: min(100%, 210px);
+      height: 438px;
+    }
+    .device-cap {
+      margin-top: 10px;
+    }
+    .section {
+      padding: 56px 0;
+    }
+    .beat {
+      border-radius: 16px;
+      padding: 22px;
+    }
+    .vis-meter {
+      align-items: flex-start;
+    }
+    .proof-card {
+      text-align: left;
+    }
+    .bottom {
+      padding: 64px 0 58px;
+    }
+    .footer-inner {
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a href="/" class="wordmark"><span class="mark">▸</span>EDGEPRINT</a>
+    <span class="nav-cta">Coming soon to App Store</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">▸ Edgeprint</p>
+    <h1>Your companion for shooting film</h1>
+    <p class="sub">
+      <em>Meter light for the roll you’re shooting.</em><br />
+      <em>Add EXIF to your lab scans.</em>
+    </p>
+    <div class="cta-row">
+      <span class="btn btn-amber">Coming soon to the App Store</span>
+      <a href="#how" class="btn btn-ghost">How it works</a>
+    </div>
+    <p class="trust">
+      <span>No account</span><span class="dot">·</span>
+      <span>No ads</span><span class="dot">·</span>
+      <span>No upload</span>
+    </p>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="problem">
+  <div class="wrap">
+    <div class="problem-card">
+      <div class="label">▸ The problem</div>
+      <h2>Film doesn’t write EXIF. Your scans come back anonymous.</h2>
+      <p>
+        Digital cameras stamp every frame with camera, lens, shutter, aperture, and time.
+        Film does none of that. You meter by feel or a separate tool, scribble settings
+        (or forget), and the lab returns beautiful files with empty metadata — Lightroom
+        has no idea what body, lens, or exposure made the shot.
+      </p>
+      <p>
+        <strong>Edgeprint is the missing link:</strong> meter and log while you shoot,
+        then match lab scans to that log and export files labeled like digital.
+        JPEG, HEIC, or TIFF in — tagged JPEG out. Originals stay on your device.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="hero" style="padding-top: 0; padding-bottom: 64px;">
+  <div class="wrap">
+    <div class="hero-phones">
+      <!-- Logger phone -->
+      <div class="phone-col">
+        <div class="device">
+          <div class="island"></div>
+          <div class="screen">
+            <div class="ml-back">‹ Bag</div>
+            <div class="ml-roll">ROLL R012 · PORTRA 400</div>
+            <div class="ml-sub">Leica M6 · ISO 400</div>
+            <div class="ml-counter">
+              <div class="ml-win">
+                <span class="ml-cur">19</span><span class="ml-of">/36</span>
+              </div>
+              <div class="ml-lbl">NEXT FRAME</div>
+            </div>
+            <div class="ml-dials">
+              <div class="ml-dial"><div class="k">ISO</div><div class="v">400</div></div>
+              <div class="ml-dial"><div class="k">SHUTTER</div><div class="v">1/125</div></div>
+              <div class="ml-dial"><div class="k">APERTURE</div><div class="v">f/8</div></div>
+            </div>
+            <div class="ml-lens">
+              <div>
+                <div class="k">LENS</div>
+                <div class="v">50mm</div>
+              </div>
+              <div class="ch">▾</div>
+            </div>
+            <div class="ml-log">
+              <div class="t">LOG FRAME</div>
+              <div class="s">SAME AS LAST · ONE TAP</div>
+            </div>
+            <div class="ml-meter" title="Meter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#1a0f04" stroke-width="2">
+                <circle cx="12" cy="12" r="7"/>
+                <circle cx="12" cy="12" r="2" fill="#1a0f04"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="device-cap">Field · log</div>
+      </div>
+
+      <!-- Light meter phone -->
+      <div class="phone-col">
+        <div class="device">
+          <div class="island"></div>
+          <div class="screen">
+            <div class="mm-top">
+              <div class="mm-close">Close</div>
+              <div class="mm-body">Leica M6</div>
+            </div>
+            <div class="mm-view">
+              <div class="mm-ev-badge">
+                <span class="ev">EV 12.3</span>
+                <span class="ok">✓ on the money</span>
+              </div>
+              <div class="mm-reticle"><div class="core"></div></div>
+            </div>
+            <div class="mm-film">PORTRA 400 · ISO 400</div>
+            <div class="mm-dials">
+              <div class="mm-dial">
+                <div class="k">ISO</div>
+                <div class="v">400</div>
+              </div>
+              <div class="mm-dial hold">
+                <div class="k">APERTURE</div>
+                <div class="v">f/8</div>
+                <div class="badge">HOLD</div>
+              </div>
+              <div class="mm-dial">
+                <div class="k">SHUTTER</div>
+                <div class="v">1/125</div>
+                <div class="badge" style="color:var(--green)">SOLVED</div>
+              </div>
+            </div>
+            <div class="mm-log">
+              <div class="t">LOG TO ROLL</div>
+              <div class="s">HANDS SETTINGS TO LOGGER</div>
+            </div>
+          </div>
+        </div>
+        <div class="device-cap">Field · light meter</div>
+      </div>
+
+      <!-- Scans phone -->
+      <div class="phone-col">
+        <div class="device">
+          <div class="island"></div>
+          <div class="screen">
+            <div class="ms-title">Scans</div>
+            <div class="ms-sub">3 rolls</div>
+            <div class="ms-sec"><span>Waiting</span><span>1</span></div>
+            <div class="ms-row">
+              <div class="ms-memo hp5"><span>HP5</span><span class="i">400</span></div>
+              <div class="ms-body">
+                <div class="ms-stock">HP5 Plus</div>
+                <div class="ms-meta">Leica M6 · R008</div>
+              </div>
+              <div class="ms-trail lab">LAB</div>
+            </div>
+            <div class="ms-sec"><span>Ready</span><span>1</span></div>
+            <div class="ms-row">
+              <div class="ms-memo"><span>PORTRA</span><span class="i">400</span></div>
+              <div class="ms-body">
+                <div class="ms-stock">Portra 400</div>
+                <div class="ms-meta">Leica M6 · 36 · ♥ 8</div>
+              </div>
+              <div class="ms-trail">R007</div>
+            </div>
+            <div class="ms-exif">
+              <div class="h">✓ EXIF written</div>
+              <div class="line"><span>Camera</span><b>Leica M6</b></div>
+              <div class="line"><span>Exposure</span><b>1/125 · f/8</b></div>
+              <div class="line"><span>Film</span><b>Portra 400</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="device-cap">Return · scans + EXIF</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS · TWO BEATS -->
+<section class="section" id="how">
+  <div class="wrap">
+    <p class="section-label">How it works</p>
+    <div class="beats">
+      <article class="beat">
+        <div class="beat-num">01 · IN THE FIELD</div>
+        <h2>Meter for your roll</h2>
+        <p>
+          Spot-meter the scene, land on settings that fit your film, then log the
+          frame in one tap. Sticky settings keep the next shot just as fast.
+        </p>
+        <ul>
+          <li><span class="tick">▸</span> Light meter tied to the loaded roll</li>
+          <li><span class="tick">▸</span> Sticky ISO, shutter, aperture, and lens</li>
+          <li><span class="tick">▸</span> Notes, gaps, GPS — incomplete is fine</li>
+        </ul>
+        <div class="beat-visual vis-meter">
+          <div class="reticle"><div class="dot"></div></div>
+          <div class="readout">
+            <div class="ev">EV 12.3</div>
+            <div class="hint">sunny 16 −2⅔</div>
+            <div class="solved">→ 1/125 · f/8 · ISO 400</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="beat">
+        <div class="beat-num">02 · BACK FROM THE LAB</div>
+        <h2>EXIF your lab scans</h2>
+        <p>
+          Import the lab’s files, pair them to your log, and export scans labeled
+          like digital: camera, lens, exposure, time, GPS, and film stock.
+        </p>
+        <ul>
+          <li><span class="tick">▸</span> JPEG, HEIC, or TIFF — Photos, Files, or ZIP</li>
+          <li><span class="tick">▸</span> One-drag alignment when the lab is off</li>
+          <li><span class="tick">▸</span> Export tagged JPEGs (originals stay on device)</li>
+        </ul>
+        <div class="beat-visual vis-exif">
+          <div class="tag">✓ Labeled like digital</div>
+          <div class="row"><span>Make / Model</span><b>Leica · M6</b></div>
+          <div class="row"><span>Lens</span><b>50mm</b></div>
+          <div class="row"><span>Exposure</span><b>1/125 · f/8 · 400</b></div>
+          <div class="row"><span>Film</span><b>Kodak Portra 400</b></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- SECONDARY -->
+<section class="section secondary" style="padding-top: 0; border-top: none;">
+  <div class="wrap">
+    <h3>Also in the app</h3>
+    <div class="chips">
+      <div class="chip"><b>Keepers</b> &amp; learn notes</div>
+      <div class="chip"><b>Share</b> contact sheets</div>
+      <div class="chip"><b>Stats</b> across your bag</div>
+      <div class="chip"><b>iCloud</b> log backup</div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section class="section" style="padding-top: 24px;">
+  <div class="wrap">
+    <div class="proof">
+      <div class="proof-card">
+        <div class="icon">▸</div>
+        <strong>Free while in beta</strong>
+        <span>No subscription. No ads.</span>
+      </div>
+      <div class="proof-card">
+        <div class="icon">◉</div>
+        <strong>Local-first</strong>
+        <span>Works in airplane mode.</span>
+      </div>
+      <div class="proof-card">
+        <div class="icon">▤</div>
+        <strong>On your device</strong>
+        <span>No account. No upload.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOTTOM CTA -->
+<section class="bottom" id="get">
+  <div class="wrap">
+    <h2>Your companion for shooting film</h2>
+    <p>iOS first · free while in beta</p>
+    <div class="cta-row">
+      <span class="btn btn-amber">Coming soon to the App Store</span>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <a href="/" class="wordmark"><span class="mark">▸</span>EDGEPRINT</a>
+      <div class="footer-meta" style="margin-top:6px">edgeprint.app</div>
+    </div>
+    <div class="footer-links">
+      <a href="/privacy/">Privacy</a>
+      <a href="mailto:support@edgeprint.app">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
